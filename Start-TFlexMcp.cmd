@@ -14,7 +14,14 @@ try {
     # ---- Settings ----
     $Port      = 8765
     $BridgeUrl = 'http://127.0.0.1:38517/command'
-    $Tools     = @('tflex_bridge_ping', 'tflex_active_document', 'tflex_list_variables')
+    $Tools     = @(
+        'tflex_bridge_ping', 'tflex_bridge_call', 'tflex_active_document', 'tflex_open_document',
+        'tflex_list_variables', 'tflex_set_variable', 'tflex_create_variable', 'tflex_rebuild',
+        'tflex_save', 'tflex_save_as', 'tflex_export', 'tflex_execute_csharp', 'tflex_launch',
+        'tflex_docs',
+        'tflex_query_model', 'tflex_create_lcs', 'tflex_model_operation', 'tflex_fragment', 'tflex_mate',
+        'gui_list_windows', 'gui_focus_window', 'gui_screenshot_window', 'gui_click', 'gui_hotkey', 'gui_type_text'
+    )
     # ------------------
 
     $LauncherDir = Split-Path -LiteralPath $env:TFLEX_LAUNCHER
@@ -67,7 +74,7 @@ npx -y supergateway --stdio "node __SERVERJS__" --outputTransport streamableHttp
 '@
     $ServerScript = $ServerScript.Replace('__KEYFILE__', $KeyFile).Replace('__PORT__', [string]$Port).Replace('__TOOLS__', ($Tools -join ', ')).Replace('__SERVERJS__', $ServerJs).Replace('__TOOLARGS__', $ToolArgs)
     $Encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($ServerScript))
-    Write-Host 'Starting gateway (read-only tools)...'
+    Write-Host 'Starting gateway (full tool set)...'
     $ServerProcess = Start-Process -FilePath $PowerShellExe -ArgumentList @('-NoLogo', '-NoProfile', '-NoExit', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $Encoded) -PassThru
 
     $Deadline = (Get-Date).AddSeconds(90)
