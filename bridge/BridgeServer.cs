@@ -67,6 +67,19 @@ namespace TflexCodexBridge
         {
             try
             {
+                // Protection against requests from web pages (browsers always send Origin
+                // and cannot send application/json cross-origin without a preflight).
+                var req = context.Request;
+                if (req.Headers["Origin"] != null
+                    || (req.UserHostName != "127.0.0.1:38517" && req.UserHostName != "localhost:38517")
+                    || req.ContentType == null
+                    || !req.ContentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)
+                    || req.ContentLength64 > 5 * 1024 * 1024)
+                {
+                    Write(context, 403, new Dictionary<string, object> { { "ok", false }, { "error", "Forbidden" } });
+                    return;
+                }
+
                 if (context.Request.HttpMethod != "POST" || context.Request.Url.AbsolutePath != "/command")
                 {
                     Write(context, 404, new Dictionary<string, object> { { "ok", false }, { "error", "POST /command expected" } });
