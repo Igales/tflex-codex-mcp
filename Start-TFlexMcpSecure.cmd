@@ -15,16 +15,36 @@ $Ready = $false
 $Key = $null
 $Headers = $null
 function Protect-File([string]$Path) {
-    $acl = New-Object System.Security.AccessControl.FileSecurity
-    $acl.SetAccessRuleProtection($true, $false)
-    $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User
-    $system = New-Object Security.Principal.SecurityIdentifier('S-1-5-18')
-    $acl.SetOwner($sid)
-    foreach ($identity in @($sid, $system)) {
-        $rule = New-Object Security.AccessControl.FileSystemAccessRule($identity, 'FullControl', 'Allow')
-        $acl.AddAccessRule($rule)
+    $item = Get-Item -LiteralPath $Path -ErrorAction Stop
+
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        throw 'Refusing to change permissions on a reparse point.'
     }
-    Set-Acl -LiteralPath $Path -AclObject $acl
+
+    # Read and modify only access rules; do not change the owner.
+    $acl = $item.GetAccessControl(
+        [Security.AccessControl.AccessControlSections]::Access
+    )
+
+    $acl.SetAccessRuleProtection($true, $false)
+
+    foreach ($rule in @($acl.Access)) {
+        [void]$acl.RemoveAccessRuleSpecific($rule)
+    }
+
+    $userSid = [Security.Principal.WindowsIdentity]::GetCurrent().User
+    $systemSid = [Security.Principal.SecurityIdentifier]::new('S-1-5-18')
+
+    foreach ($sid in @($userSid, $systemSid)) {
+        $rule = [Security.AccessControl.FileSystemAccessRule]::new(
+            $sid,
+            [Security.AccessControl.FileSystemRights]::FullControl,
+            [Security.AccessControl.AccessControlType]::Allow
+        )
+        [void]$acl.AddAccessRule($rule)
+    }
+
+    $item.SetAccessControl($acl)
 }
 function Read-Key([string]$Path) {
     $secure = (Get-Content -LiteralPath $Path -Raw).Trim() | ConvertTo-SecureString
@@ -79,7 +99,7 @@ try {
     # Optional fixed HTTPS endpoint. Empty uses the agent's configured/default domain.
     $NgrokUrl = ''
     $Tools = @(
-        'tflex_bridge_ping','tflex_bridge_call','tflex_active_document','tflex_open_document',
+        'tflex_bridge_ping','tflex_bridge_call','tflex_active_document','tflex_create_document','tflex_open_document',
         'tflex_list_variables','tflex_set_variable','tflex_create_variable','tflex_rebuild',
         'tflex_save','tflex_save_as','tflex_export','tflex_execute_csharp','tflex_launch',
         'tflex_docs','tflex_query_model','tflex_create_lcs','tflex_model_operation','tflex_fragment','tflex_mate',
@@ -184,7 +204,9 @@ exit $LASTEXITCODE
     [void](Read-Host)
 } catch {
     # Avoid echoing exception text that might include authorization headers/policy contents.
-    Write-Host ('Startup/check failed at script line ' + $_.InvocationInfo.ScriptLineNumber + '. Existing services were not stopped. Check local process windows; do not share secrets.') -ForegroundColor Red
+	Write-Host ('Startup/check failed at script line ' +    $_.InvocationInfo.ScriptLineNumber) -ForegroundColor Red
+Write-Host ('Exception type: ' + $_.Exception.GetType().FullName)
+Write-Host ('Error ID: ' + $_.FullyQualifiedErrorId)
 } finally {
     Stop-Owned $TunnelProcess
     Stop-Owned $GatewayProcess

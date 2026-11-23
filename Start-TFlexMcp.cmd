@@ -15,7 +15,7 @@ try {
     $Port      = 8765
     $BridgeUrl = 'http://127.0.0.1:38517/command'
     $Tools     = @(
-        'tflex_bridge_ping', 'tflex_bridge_call', 'tflex_active_document', 'tflex_open_document',
+        'tflex_bridge_ping', 'tflex_bridge_call', 'tflex_active_document', 'tflex_create_document','tflex_open_document',
         'tflex_list_variables', 'tflex_set_variable', 'tflex_create_variable', 'tflex_rebuild',
         'tflex_save', 'tflex_save_as', 'tflex_export', 'tflex_execute_csharp', 'tflex_launch',
         'tflex_docs',
