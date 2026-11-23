@@ -93,8 +93,8 @@ Perplexity (удалённый MCP-коннектор, Streamable HTTP, API Key)
 ## 6. Подключение в Perplexity
 
 1. Plugins → Add custom → Add MCP connector → Remote.
-2. Адрес: публичный адрес из вывода лаунчера, с суффиксом `/mcp` (пример: `https://<домен>.ngrok-free.dev/mcp`).
-3. Транспорт: Streamable HTTP. Авторизация: API Key. Вставьте ключ из буфера обмена.
+2. Адрес: публичный адрес из вывода лаунчера, с суффиксом `/mcp` (пример: `https://aerobics-washer-negotiate.ngrok-free.dev/mcp`).
+3. Транспорт: Streamable HTTP. Авторизация: API Key. (Запустите Start-TFlexMcp.cmd. Лаунчер создаст новый ключ и скопирует его в буфер. Старый ключ после этого перестанет работать) Вставьте ключ из буфера обмена.
 4. Чтобы вызвать коннектор в запросе, упоминайте его: `@T-FLEX CAD`.
 5. Проверьте вызовами: `tflex_bridge_ping`, затем `tflex_active_document` и `tflex_list_variables`.
 
