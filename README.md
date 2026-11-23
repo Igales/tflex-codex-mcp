@@ -228,3 +228,21 @@ The bridge listens only on `127.0.0.1`. It is intended for local automation on a
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+
+## Document targeting update (2026-11-23)
+
+- `tflex_create_document` creates a visible, unsaved 3D document. Raw bridge equivalent: `create_document` with `{}`.
+- `tflex_execute_csharp` accepts `documentMode: active` or `documentMode: new`. New mode runs code against the object returned by document creation, not a second active-document lookup.
+- Omitting documentMode preserves legacy selection: documentPath opens a document, otherwise the current document is used. Explicit modes cannot be combined with a non-empty documentPath.
+- documentName is optional metadata for new mode or create_document. It does not rename the tab; responses report requestedName and nameApplied=false. execute_csharp rejects a non-empty documentName outside new mode.
+- Current-document selection prefers TFlex.Application.ActiveViewDocument and falls back to TFlex.Application.ActiveDocument. active_document also returns activeViewDocument, systemActiveDocument and selectionPolicy=activeViewThenSystem. Without a selected document it still returns an error.
+- Creation does not save. Script saving remains opt-in through save or saveAsPath.
+
+### Deployment and verification
+
+Rebuild the bridge, close CAD safely before replacing installed DLL copies, then restart CAD. Restart the MCP server after server.js changes. Update the gateway tool allowlist to include tflex_create_document if required, and refresh client discovery. A server-side registration alone does not guarantee exposure by the gateway; the tested connector still exposed the previous 25 tools, so creation was tested through tflex_bridge_call. Do not reuse an older release binary as proof that it contains these changes.
+
+Local runtime checks passed: create the first document without an active document; create a second document and read it as active in the next request; manually switch to the first tab and read that document. Diagnostic fields confirmed the updated DLL was loaded. Both API properties agreed during these checks, so the original transient mismatch was not proven to be caused or permanently fixed by selection priority. Compilation completed without errors or warnings.
+
+Not covered by this acceptance run: modeling through the new active/new execution modes, rebuild/save/export, repeated stress tests, and all failure paths. Do not interpret document selection checks as full modeling acceptance.

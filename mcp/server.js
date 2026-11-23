@@ -11,6 +11,7 @@ const BRIDGE_URL = process.env.TFLEX_BRIDGE_URL || "http://127.0.0.1:38517/comma
 const TMP_DIR = process.env.TFLEX_MCP_TMP || path.join(os.tmpdir(), "tflex-codex");
 
 const tools = [
+  { name: "tflex_create_document", description: "Create a new visible unsaved 3D document. documentName is metadata only.", inputSchema: { type: "object", properties: { documentName: { type: "string" } }, additionalProperties: false } },
   {
     name: "tflex_bridge_call",
     description: "Call a raw command on the T-FLEX in-process bridge plugin over localhost.",
@@ -38,6 +39,8 @@ const tools = [
           type: "string",
           description: "C# statements for the generated Run(Document document, Dictionary<string, object> args) method body."
         },
+        documentMode: { type: "string", enum: ["active", "new"] },
+        documentName: { type: "string", description: "Requested name metadata only; does not rename the tab." },
         scriptArgs: {
           type: "object",
           additionalProperties: true,
@@ -316,6 +319,8 @@ async function callTool(name, args) {
       return launchTflex(args);
     case "tflex_active_document":
       return callBridge("active_document", {});
+    case "tflex_create_document":
+      return callBridge("create_document", args);
     case "tflex_open_document":
       return callBridge("open_document", args);
     case "tflex_list_variables":

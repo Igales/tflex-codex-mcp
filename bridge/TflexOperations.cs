@@ -20,6 +20,8 @@ namespace TflexCodexBridge
                     return Ok("bridge", "T-FLEX bridge is running");
                 case "active_document":
                     return ActiveDocument();
+                case "create_document":
+                    return CreateDocument(args);
                 case "open_document":
                     return OpenDocument(RequireString(args, "path"));
                 case "list_variables":
@@ -43,10 +45,36 @@ namespace TflexCodexBridge
             }
         }
 
+        private Document SelectDocument(Dictionary<string, object> args, string path, out bool created)
+        {
+            created = false;
+            string mode = ArgString(args, "documentMode", "legacy");
+            if (mode != "legacy" && mode != "active" && mode != "new") throw new ArgumentException("Invalid documentMode");
+            if (mode != "legacy" && !string.IsNullOrEmpty(path)) throw new ArgumentException("documentMode conflicts with documentPath");
+            if (mode != "new" && !string.IsNullOrEmpty(ArgString(args, "documentName", null))) throw new ArgumentException("documentName requires new mode");
+            if (mode == "new") { Document d = TFlex.Application.NewDocument(true, true); if (d == null) throw new InvalidOperationException("Cannot create 3D document"); created = true; return d; }
+            return string.IsNullOrEmpty(path) ? RequireActiveDocument() : OpenDocumentForScript(path);
+        }
+
+        private Dictionary<string, object> CreateDocument(Dictionary<string, object> args)
+        {
+            Document d = TFlex.Application.NewDocument(true, true);
+            if (d == null) throw new InvalidOperationException("Cannot create 3D document");
+            var r = Ok("document", DocumentInfo(d));
+            r["created"] = true; r["saved"] = false; r["requestedName"] = ArgString(args, "documentName", null); r["nameApplied"] = false;
+            return r;
+        }
+
         private Dictionary<string, object> ActiveDocument()
         {
             Document doc = RequireActiveDocument();
-            return Ok("document", DocumentInfo(doc));
+            var response = Ok("document", DocumentInfo(doc));
+            var view = TFlex.Application.ActiveViewDocument;
+            var system = TFlex.Application.ActiveDocument;
+            response["activeViewDocument"] = view == null ? null : DocumentInfo(view);
+            response["systemActiveDocument"] = system == null ? null : DocumentInfo(system);
+            response["selectionPolicy"] = "activeViewThenSystem";
+            return response;
         }
 
         private Dictionary<string, object> OpenDocument(string path)
@@ -191,11 +219,10 @@ namespace TflexCodexBridge
                 .GetMethod("Run", BindingFlags.Public | BindingFlags.Static);
 
             Document doc;
+            bool created = false;
             try
             {
-                doc = string.IsNullOrEmpty(documentPath)
-                    ? RequireActiveDocument()
-                    : OpenDocumentForScript(documentPath);
+                doc = SelectDocument(args, documentPath, out created);
             }
             catch (Exception ex)
             {
@@ -216,6 +243,9 @@ namespace TflexCodexBridge
                 var response = Ok("result", NormalizeForJson(result, 0));
                 response["resultType"] = result == null ? null : result.GetType().FullName;
                 response["document"] = DocumentInfo(doc);
+                response["created"] = created;
+                response["requestedName"] = ArgString(args, "documentName", null);
+                response["nameApplied"] = false;
 
                 if (!string.IsNullOrEmpty(saveAsPath))
                 {
@@ -399,7 +429,7 @@ namespace TflexCodexBridge.Dynamic
 
         private static Document RequireActiveDocument()
         {
-            Document doc = TFlex.Application.ActiveDocument;
+            Document doc = TFlex.Application.ActiveViewDocument ?? TFlex.Application.ActiveDocument;
             if (doc == null)
                 throw new InvalidOperationException("No active T-FLEX document");
             return doc;
